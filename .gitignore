@@ -15,6 +15,7 @@ dist/
 build/
 out/
 coverage/
+.pytest_cache/
 
 # IDEs
 .vscode/
