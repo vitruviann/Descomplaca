@@ -36,3 +36,10 @@ jobs:
         server-dir: ./public_html/
         protocol: ftp
         port: 21
+        dangerous-clean-slate: true
+        exclude: |
+          **/.git*
+          **/.git*/**
+          uploads/**
+          media/**
+          .htaccess
