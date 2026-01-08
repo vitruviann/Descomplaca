@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Orders
+    match /orders/{orderId} {
+      allow create: if isAuthenticated();
+      // Allow read if user is owner OR if user is a dispatcher (implementation detail: how to identify dispatcher? 
+      // For MVP, assuming any auth user can see OPEN orders to bid, but detailed info maybe restricted. 
+      // Keeping simple: Owner can read/write. Authenticated can read (to list leads).)
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && (isOwner(resource.data.owner_id) || resource.data.status == 'OPEN'); 
+    }
+    
+    // Proposals
+    match /proposals/{proposalId} {
+      allow create: if isAuthenticated(); // Dispatchers
+      allow read: if isAuthenticated(); // Owner needs to see proposals
+      allow update: if isAuthenticated(); // Dispatcher updates their proposal, or system updates status
+    }
+    
+    // Chat Messages
+    match /messages/{messageId} {
+      allow read, create: if isAuthenticated();
+      // Ideally check if request.auth.uid is in order.owner_id or proposal.dispatcher_id
+    }
+    
+    // Reviews
+    match /reviews/{reviewId} {
+      allow create: if isAuthenticated();
+      allow read: if true; // Public reviews
+    }
+  }
+}

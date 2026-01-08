@@ -6,9 +6,13 @@ import { IMaskInput } from 'react-imask';
 import { createOrder } from '../api';
 import { useNavigate } from 'react-router-dom';
 
+import { auth } from '../firebase'; // Import auth
+import { onAuthStateChanged } from 'firebase/auth';
+
 const SolicitationWizard = () => {
     const [step, setStep] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const [user, setUser] = useState(null);
     const [formData, setFormData] = useState({
         plate: '',
         renavam: '',
@@ -24,13 +28,35 @@ const SolicitationWizard = () => {
     const [createdOrder, setCreatedOrder] = useState(null);
     const navigate = useNavigate();
 
+    // Listen to auth state
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            if (currentUser) {
+                setFormData(prev => ({
+                    ...prev,
+                    name: currentUser.displayName || prev.name,
+                    email: currentUser.email || prev.email
+                }));
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
     const handleNext = async () => {
         if (step === 2) {
-            // Submit Order
+            // Check auth before submit
+            if (!user) {
+                // Save state and redirect to auth? 
+                // For MVP, simple alert or redirect
+                alert("Por favor, faça login para finalizar a solicitação.");
+                navigate('/auth'); // Assuming /auth is the route for Auth.jsx
+                return;
+            }
             await handleSubmit();
         } else if (isValid) {
             setStep((prev) => prev + 1);
-            setIsValid(false); // Reset validation
+            setIsValid(false);
         }
     };
 
@@ -44,7 +70,8 @@ const SolicitationWizard = () => {
                 description: formData.description,
                 city: formData.city,
                 state: formData.state,
-                owner_id: 1 // Mock ID as we don't have full auth yet. In prod, use auth context.
+                owner_id: user.uid, // Use Firebase UID
+                owner_email: user.email // Store email for reference
             };
 
             const response = await createOrder(orderPayload);

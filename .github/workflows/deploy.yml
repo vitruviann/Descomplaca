@@ -42,4 +42,3 @@ jobs:
           **/.git*/**
           uploads/**
           media/**
-          .htaccess

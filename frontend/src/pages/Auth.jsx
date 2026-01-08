@@ -1,66 +1,119 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useState } from 'react';
+import { auth } from '../firebase';
+import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    updateProfile
+} from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
-import { QrCode } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const Auth = () => {
+    const [isLogin, setIsLogin] = useState(true);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
+    const [error, setError] = useState(null);
     const navigate = useNavigate();
-    const [status, setStatus] = useState("Aguardando início do login...");
-    const [loading, setLoading] = useState(false);
 
-    const startLogin = async () => {
-        setLoading(true);
-        setStatus("Iniciando navegador seguro...");
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+
         try {
-            const res = await fetch('http://127.0.0.1:8000/login/govbr/start', { method: 'POST' });
-            if (res.ok) {
-                setStatus("Aguardando leitura do QR Code no Gov.br...");
-                // In real app, we would poll for success or show the mirrored screen
-                // For this stub, we simulate success after a delay or manual button
+            if (isLogin) {
+                await signInWithEmailAndPassword(auth, email, password);
             } else {
-                setStatus("Erro ao iniciar login.");
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, { displayName: name });
             }
-        } catch (e) {
-            setStatus("Erro de conexão.");
+            navigate('/solicitar'); // Redirect after auth
+        } catch (err) {
+            console.error(err);
+            let msg = "Erro na autenticação.";
+            if (err.code === 'auth/wrong-password') msg = "Senha incorreta.";
+            if (err.code === 'auth/user-not-found') msg = "Usuário não encontrado.";
+            if (err.code === 'auth/email-already-in-use') msg = "E-mail já cadastrado.";
+            setError(msg);
         }
-        setLoading(false);
     };
 
     return (
-        <div className="flex flex-col items-center justify-center h-full space-y-8">
-            <h2 className="text-2xl font-bold text-gray-800">Autenticação Gov.br</h2>
-
-            <div className="bg-white p-8 rounded-xl shadow-inner border border-gray-200 flex flex-col items-center">
-                <div className="bg-gray-100 w-64 h-64 rounded-lg flex items-center justify-center mb-4 relative overflow-hidden">
-                    {/* Placeholder for QR Code Mirroring */}
-                    <QrCode size={100} className="text-gray-400 opacity-20" />
-                    <p className="absolute text-center text-xs text-gray-500 w-full px-4">
-                        O QR Code do Gov.br aparecerá na tela do navegador seguro.
+        <div className="min-h-screen bg-brand-gray-bg flex items-center justify-center p-4">
+            <SEO title={isLogin ? "Entrar" : "Criar Conta"} description="Acesse sua conta no Despachante Digital." />
+            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                        {isLogin ? 'Bem-vindo de volta' : 'Crie sua conta'}
+                    </h2>
+                    <p className="text-gray-500">
+                        {isLogin ? 'Acesse sua conta para continuar' : 'Preencha seus dados para começar'}
                     </p>
                 </div>
 
-                <p className="text-sm font-medium text-blue-800 mb-4">{status}</p>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {!isLogin && (
+                        <div className="relative">
+                            <User className="absolute left-3 top-3.5 text-gray-400" size={20} />
+                            <input
+                                type="text"
+                                placeholder="Nome Completo"
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-brand-yellow outline-none"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                            />
+                        </div>
+                    )}
 
-                <div className="flex space-x-4">
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-3.5 text-gray-400" size={20} />
+                        <input
+                            type="email"
+                            placeholder="E-mail"
+                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-brand-yellow outline-none"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-3.5 text-gray-400" size={20} />
+                        <input
+                            type="password"
+                            placeholder="Senha"
+                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-brand-yellow outline-none"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="text-red-500 text-sm bg-red-50 p-2 rounded text-center">
+                            {error}
+                        </div>
+                    )}
+
                     <button
-                        onClick={startLogin}
-                        disabled={loading}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50"
+                        type="submit"
+                        className="w-full bg-brand-yellow text-brand-black font-bold py-3 rounded-xl shadow-md flex items-center justify-center gap-2 hover:bg-yellow-400 transition-colors"
                     >
-                        {loading ? "Carregando..." : "Exibir QR Code"}
+                        {isLogin ? 'Entrar' : 'Cadastrar'} <ArrowRight size={20} />
                     </button>
+                </form>
 
+                <div className="mt-6 text-center">
                     <button
-                        onClick={() => navigate('/upload')} // Bypass for demo
-                        className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-bold hover:bg-gray-300"
+                        onClick={() => setIsLogin(!isLogin)}
+                        className="text-gray-500 hover:text-brand-black text-sm font-medium"
                     >
-                        Simular Sucesso
+                        {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entre'}
                     </button>
                 </div>
-            </div>
-
-            <div className="text-xs text-gray-400 max-w-md text-center">
-                Utilize o aplicativo do Gov.br no seu celular para ler o código.
-                Nenhuma senha será digitada neste terminal.
             </div>
         </div>
     );

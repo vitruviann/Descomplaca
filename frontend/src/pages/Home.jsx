@@ -5,6 +5,7 @@ import { FileText, Car, CheckCircle, Clock, Shield, HelpCircle, Phone, Mail, Map
 import Header from '../components/Header';
 import ServiceCard from '../components/ServiceCard';
 import ProcessStep from '../components/ProcessStep';
+import SEO from '../components/SEO';
 
 function Home() {
     const services = [
@@ -54,6 +55,10 @@ function Home() {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
+            <SEO
+                title="Soluções de Trânsito Online"
+                description="Regularize seu veículo de forma 100% online. Licenciamento, transferência e mais."
+            />
             <Header />
 
             {/* Hero Section */}

@@ -1,27 +1,20 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, User, Shield } from 'lucide-react';
-import api from '../api';
+import { subscribeToMessages, sendMessage } from '../api';
+import { auth } from '../firebase'; // Need auth to know if "isMe" in some cases, or passed prop
 
 const SecureChat = ({ orderId, isDispatcher = false }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const bottomRef = useRef(null);
 
-    const fetchMessages = async () => {
-        try {
-            const response = await api.get(`/chat/${orderId}`);
-            setMessages(response.data);
-        } catch (error) {
-            console.error("Error fetching messages", error);
-        }
-    };
-
     useEffect(() => {
-        fetchMessages();
-        // Simple polling every 3 seconds
-        const interval = setInterval(fetchMessages, 3000);
-        return () => clearInterval(interval);
+        // Subscribe to real-time updates
+        const unsubscribe = subscribeToMessages(orderId, (newMessages) => {
+            setMessages(newMessages);
+        });
+        return () => unsubscribe();
     }, [orderId]);
 
     useEffect(() => {
@@ -33,13 +26,14 @@ const SecureChat = ({ orderId, isDispatcher = false }) => {
         if (!input.trim()) return;
 
         try {
-            await api.post('/chat/', {
+            await sendMessage({
                 order_id: orderId,
                 content: input,
-                is_from_dispatcher: isDispatcher
+                is_from_dispatcher: isDispatcher,
+                // Add user ID if available, for now rely on is_from_dispatcher flag
+                sender_id: auth.currentUser?.uid || 'anon'
             });
             setInput('');
-            fetchMessages(); // Immediate refresh
         } catch (error) {
             console.error("Error sending message", error);
         }
@@ -73,8 +67,8 @@ const SecureChat = ({ orderId, isDispatcher = false }) => {
                     return (
                         <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[80%] rounded-2xl p-3 shadow-sm ${isMe
-                                    ? 'bg-brand-yellow text-brand-black rounded-tr-none'
-                                    : 'bg-white border border-gray-100 text-gray-700 rounded-tl-none'
+                                ? 'bg-brand-yellow text-brand-black rounded-tr-none'
+                                : 'bg-white border border-gray-100 text-gray-700 rounded-tl-none'
                                 }`}>
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-xs font-bold opacity-70">
